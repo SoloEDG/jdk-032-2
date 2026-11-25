@@ -8,8 +8,12 @@ defineProps<{
   currentEvent: SimulationEvent | null; stale: boolean
 }>()
 const emit = defineEmits<{ toggle: []; seek: [number]; restart: []; event: [string] }>()
-const iconFor = (kind: SimulationEvent['kind']) => kind === 'interrupted' ? AlertTriangle
-  : kind === 'mechanism' ? FastForward : CheckCircle2
+const iconFor = (event: SimulationEvent) => event.kind === 'interrupted' || event.uncertain ? AlertTriangle
+  : event.kind === 'mechanism' ? FastForward : CheckCircle2
+function supportLabel(event: SimulationEvent) {
+  if (event.supportZ === undefined || Math.abs(event.supportZ) < 0.02) return ''
+  return ` · 支承 ${event.supportZ >= 0 ? '+' : ''}${event.supportZ.toFixed(2)}m`
+}
 </script>
 
 <template>
@@ -37,12 +41,13 @@ const iconFor = (kind: SimulationEvent['kind']) => kind === 'interrupted' ? Aler
       <div class="event-list-heading"><span>事件轨迹</span><span>{{ events.length }} EVENTS</span></div>
       <ol class="event-list">
         <li v-for="event in events" :key="event.id">
-          <button class="event-row" :class="{ current: currentEvent?.id === event.id, interrupted: event.kind === 'interrupted' }"
+          <button class="event-row" :class="{ current: currentEvent?.id === event.id, interrupted: event.kind === 'interrupted', uncertain: event.uncertain }"
             :aria-current="currentEvent?.id === event.id ? 'step' : undefined" @click="emit('event', event.id)">
             <span class="event-time mono">{{ formatSeconds(event.time) }}</span>
-            <span class="event-icon"><component :is="iconFor(event.kind)" :size="14" /></span>
-            <span class="event-copy"><strong>{{ run.events.find(item => item.id === event.id)?.pieceId === run.startPieceId ? '启动点' : event.detail.split(' · ')[0] }}</strong><small>{{ event.detail.split(' · ')[1] ?? event.pieceId }}</small></span>
+            <span class="event-icon"><component :is="iconFor(event)" :size="14" /></span>
+            <span class="event-copy"><strong>{{ run.events.find(item => item.id === event.id)?.pieceId === run.startPieceId ? '启动点' : event.detail.split(' · ')[0] }}</strong><small>{{ (event.detail.split(' · ')[1] ?? event.pieceId) + supportLabel(event) }}</small></span>
             <span v-if="event.kind === 'interrupted'" class="event-flag">中断</span>
+            <span v-else-if="event.uncertain" class="event-flag uncertain">不确定</span>
           </button>
         </li>
       </ol>

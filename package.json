@@ -7,7 +7,8 @@
     "dev": "vite",
     "typecheck": "vue-tsc --noEmit",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify": "esbuild scripts/verify-terrain.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/verify-terrain.mjs && node node_modules/.cache/verify-terrain.mjs"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.2.0",

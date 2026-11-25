@@ -33,6 +33,18 @@ export interface SceneSettings {
   showGrid: boolean
 }
 
+/**
+ * 场景地面的高度场。节点按行优先排列，覆盖整个桌面矩形，
+ * 节点 (i, j) 位于 (i * cell, j * cell)，值为该点高程（米，可正可负）。
+ * 元件支承高程始终由高度场派生，编辑地形后自动重新贴合。
+ */
+export interface TerrainField {
+  cell: number
+  cols: number
+  rows: number
+  heights: number[]
+}
+
 export interface DominoDocument {
   id: string
   title: string
@@ -41,6 +53,7 @@ export interface DominoDocument {
   pieces: Piece[]
   connections: MechanismConnection[]
   scene: SceneSettings
+  terrain: TerrainField
   startPieceId: string
 }
 
@@ -51,6 +64,10 @@ export interface SimulationEvent {
   causeId: string | null
   kind: 'trigger' | 'fall' | 'mechanism' | 'interrupted'
   detail: string
+  /** 事件发生时元件的支承高程（米），由地形高度场派生。 */
+  supportZ?: number
+  /** 该事件的接触或支承依赖窄脊等不确定边界，结果仅供参考。 */
+  uncertain?: boolean
 }
 
 export interface SimulationRun {

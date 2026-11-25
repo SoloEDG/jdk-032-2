@@ -3,15 +3,22 @@ import { computed } from 'vue'
 import { AudioWaveform, ChevronDown, Cloud, Dot } from '@lucide/vue'
 import { PiecePalette, BuildCanvas, ObjectInspector } from '@/features/layout'
 import { MechanismPanel } from '@/features/mechanisms'
-import { ScenePanel } from '@/features/scene'
+import { ScenePanel, supportAt } from '@/features/scene'
 import { SimulationBar } from '@/features/simulation'
 import { ReplayPanel } from '@/features/replay'
 import { useWorkspace } from './useWorkspace'
 
 const {
-  document, saveState, focusPieceId, layout, mechanisms, scene, simulation, review, place, move, focusEvent,
+  document, saveState, focusPieceId, layout, mechanisms, scene, terrain, simulation, review,
+  chooseTool, setTerrainMode, brush, place, move, focusEvent,
 } = useWorkspace()
 const saveLabel = computed(() => saveState.value === 'saved' ? '已保存' : saveState.value === 'saving' ? '保存中' : '尚未保存')
+const selectedSupport = computed(() => {
+  const piece = layout.selected.value
+  if (!piece) return null
+  const info = supportAt(document.value.terrain, piece.x, piece.y, piece.width / 2)
+  return { z: info.z, uncertain: info.uncertain }
+})
 </script>
 
 <template>
@@ -29,13 +36,16 @@ const saveLabel = computed(() => saveState.value === 'saved' ? '已保存' : sav
 
     <main id="workspace" class="workspace-grid">
       <aside class="left-rail">
-        <PiecePalette :active="layout.activeTool.value" @choose="layout.chooseTool" />
+        <PiecePalette :active="layout.activeTool.value" @choose="chooseTool" />
         <div class="rail-divider"></div>
         <MechanismPanel :document="document" :from-id="mechanisms.fromId.value" :to-id="mechanisms.toId.value"
           :message="mechanisms.message.value" @update:from-id="mechanisms.fromId.value = $event"
           @update:to-id="mechanisms.toId.value = $event" @add="mechanisms.add" @remove="mechanisms.remove" @toggle="mechanisms.toggle" />
         <div class="rail-divider"></div>
-        <ScenePanel :scene="document.scene" @update="scene.update" />
+        <ScenePanel :scene="document.scene" :terrain-mode="terrain.mode.value" :brush-radius="terrain.radius.value"
+          :brush-strength="terrain.strength.value" :terrain-stats="terrain.stats.value"
+          @update="scene.update" @set-terrain-mode="setTerrainMode" @set-brush-radius="terrain.setRadius"
+          @set-brush-strength="terrain.setStrength" @reset-terrain="terrain.reset" />
       </aside>
 
       <section class="center-column">
@@ -44,8 +54,8 @@ const saveLabel = computed(() => saveState.value === 'saved' ? '已保存' : sav
           <div class="revision-chip"><Dot :size="19" />修订 {{ document.revision.toString().padStart(2, '0') }}</div>
         </div>
         <BuildCanvas :document="document" :active-tool="layout.activeTool.value" :selected-id="layout.selectedId.value"
-          :run="simulation.run.value" :focus-piece-id="focusPieceId" @place="place" @select="layout.select"
-          @move="move" />
+          :run="simulation.run.value" :focus-piece-id="focusPieceId" :terrain-editing="terrain.mode.value !== null"
+          :brush-radius="terrain.radius.value" @place="place" @select="layout.select" @move="move" @brush="brush" />
         <SimulationBar :run="simulation.run.value" :stale="simulation.stale.value" :busy="simulation.busy.value"
           :issue="simulation.issue.value" @run="simulation.simulate" @reset="simulation.clear" />
         <div class="center-footer">
@@ -56,7 +66,7 @@ const saveLabel = computed(() => saveState.value === 'saved' ? '已保存' : sav
       </section>
 
       <aside class="right-rail">
-        <ObjectInspector :piece="layout.selected.value" @rotate="layout.rotate" @remove="layout.remove" @update="layout.update" />
+        <ObjectInspector :piece="layout.selected.value" :support="selectedSupport" @rotate="layout.rotate" @remove="layout.remove" @update="layout.update" />
         <div class="rail-divider"></div>
         <ReplayPanel :run="simulation.run.value" :events="review.events.value" :time="review.time.value"
           :playing="review.playing.value" :current-event="review.currentEvent.value" :stale="simulation.stale.value"

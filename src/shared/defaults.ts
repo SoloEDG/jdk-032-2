@@ -1,4 +1,5 @@
 import type { DominoDocument, Piece } from './document'
+import { createFlatTerrain } from '@/features/scene/lib/terrain'
 
 const domino = (id: string, x: number, y: number, angle: number, label: string): Piece => ({
   id, kind: 'domino', x, y, angle, facing: 'east', label, height: 1.6, width: 0.42,
@@ -32,6 +33,7 @@ export function createDefaultDocument(): DominoDocument {
       { id: 'c2', from: 's1', to: 'd9', delay: 0.15, enabled: true },
     ],
     scene: { gravity: 9.8, friction: 0.62, width: 21, height: 9, showGrid: true },
+    terrain: createFlatTerrain(21, 9),
     startPieceId: 'd1',
   }
 }

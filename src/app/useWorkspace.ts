@@ -3,7 +3,7 @@ import type { DominoDocument } from '@/shared/document'
 import { createDefaultDocument } from '@/shared/defaults'
 import { useLayout } from '@/features/layout'
 import { useMechanisms } from '@/features/mechanisms'
-import { useScene, clampToScene } from '@/features/scene'
+import { useScene, useTerrain, clampToScene, createFlatTerrain, isTerrainValid } from '@/features/scene'
 import { useSimulation } from '@/features/simulation'
 import { useReview } from '@/features/replay'
 
@@ -15,6 +15,9 @@ function loadProject() {
     if (!saved) return createDefaultDocument()
     const parsed = JSON.parse(saved) as DominoDocument
     if (!Array.isArray(parsed.pieces) || !Array.isArray(parsed.connections) || !parsed.scene) return createDefaultDocument()
+    if (!isTerrainValid(parsed.terrain, parsed.scene.width, parsed.scene.height)) {
+      parsed.terrain = createFlatTerrain(parsed.scene.width, parsed.scene.height)
+    }
     return parsed
   } catch {
     return createDefaultDocument()
@@ -39,6 +42,7 @@ export function useWorkspace() {
   const layout = useLayout(document, changed)
   const mechanisms = useMechanisms(document, changed)
   const scene = useScene(document, changed)
+  const terrain = useTerrain(document, changed)
   const simulation = useSimulation(document)
   const review = useReview(simulation.run)
 
@@ -55,6 +59,19 @@ export function useWorkspace() {
     }, 380)
   })
 
+  function chooseTool(kind: Parameters<typeof layout.chooseTool>[0]) {
+    layout.chooseTool(kind)
+    if (kind) terrain.setMode(null)
+  }
+  function setTerrainMode(mode: Parameters<typeof terrain.setMode>[0]) {
+    terrain.setMode(mode)
+    if (mode) layout.chooseTool(null)
+  }
+  function brush(x: number, y: number, phase: 'start' | 'move' | 'end') {
+    if (phase === 'start') terrain.beginStroke()
+    terrain.strokeTo(x, y)
+    if (phase === 'end') terrain.endStroke()
+  }
   function place(kind: Parameters<typeof layout.add>[0], x: number, y: number) {
     const piece = { x, y, width: kind === 'ramp' ? 1.7 : 0.42, id: '', kind, label: '', height: 1, angle: 0, facing: 'east' as const, fallThreshold: 0.8, friction: 0.55 }
     const safe = clampToScene(document.value, piece)
@@ -81,6 +98,7 @@ export function useWorkspace() {
       review.toggle()
     } else if (event.key === 'Escape') {
       layout.chooseTool(null)
+      terrain.setMode(null)
       layout.select(null)
       focusPieceId.value = null
     } else {
@@ -93,5 +111,5 @@ export function useWorkspace() {
     window.clearTimeout(saveTimer)
   })
 
-  return { document, saveState, focusPieceId, layout, mechanisms, scene, simulation, review, place, move, focusEvent }
+  return { document, saveState, focusPieceId, layout, mechanisms, scene, terrain, simulation, review, chooseTool, setTerrainMode, brush, place, move, focusEvent }
 }
